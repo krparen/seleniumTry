@@ -30,10 +30,6 @@ public class ExampleController {
         return inputFrom.toString();
     }
 
-    private WebElement cityFromAutocomplete() {
-
-    }
-
     @PostConstruct
     public void postConstruct() {
         System.setProperty("webdriver.chrome.driver", "C:/chromedriver/chromedriver.exe");
