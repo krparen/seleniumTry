@@ -2,9 +2,11 @@ package com.example.demo;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
+import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +26,9 @@ public class ExampleController {
 
     @RequestMapping
     public TicketInfo getSiteContent() throws Exception {
-        driver = new ChromeDriver();
+        ChromeOptions options = new ChromeOptions();
+        options.setPageLoadStrategy(PageLoadStrategy.NONE); // https://www.skptricks.com/2018/08/timed-out-receiving-message-from-renderer-selenium.html
+        driver = new ChromeDriver(options);
         driver.get("https://spasibosberbank.travel/#/");
 
         fillCityFrom();
@@ -96,7 +100,6 @@ public class ExampleController {
     private void increasePassengersCount() throws  Exception {
         driver.findElement(By.xpath("//div[@class = 'select-passengers-count__label']")).click();
         driver.findElement(By.xpath("//div[@class = 'select-passengers-count__popup']/div/div//button[@class = 'counter__btn btn-plus']")).click();
-        Thread.sleep(3000);
     }
 
     @PostConstruct
