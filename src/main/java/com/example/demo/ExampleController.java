@@ -2,7 +2,6 @@ package com.example.demo;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -15,40 +14,89 @@ import javax.annotation.PostConstruct;
 
 @RestController
 @Slf4j
-@RequestMapping("/getSiteContent")
+@RequestMapping("/getCheapestTicket")
 public class ExampleController {
 
-    private String FROM_BLOCK_XPATH = "//div[@class = 'group-fields__from-block']/location-autocomplete/div";
-    private String TO_BLOCK_XPATH = "";
+    private String DEPARTURE_CITY_BLOCK_XPATH = "//div[@class = 'group-fields__from-block']/location-autocomplete/div";
+    private String DESTINATION_CITY_BLOCK_XPATH = "//div[@class = 'search-form__group-fields']/location-autocomplete/div";
+    private String CHEAPEST_TICKET_INFO_PATH = "//div[@class = 'ticket-group ticket-group_cheapest']/div[@class = 'ticket-group__container']";
+    private WebDriver driver;
 
     @RequestMapping
-    public String getSiteContent() throws Exception {
-        WebDriver driver = new ChromeDriver();
+    public TicketInfo getSiteContent() throws Exception {
+        driver = new ChromeDriver();
         driver.get("https://spasibosberbank.travel/#/");
-        WebDriverWait wait = new WebDriverWait(driver,30);
-        //wait.until(ExpectedConditions.visibilityOfElementLocated())
-        Thread.sleep(2000);
-        WebElement inputFrom = driver.findElement(By.xpath("//div[@class = 'group-fields__from-block']/location-autocomplete/div/input"));
+
+        fillCityFrom();
+        fillCityTo();
+        increasePassengersCount();
+        clickSubmitButton();
+
+        return parseCheapestTicketInfo();
+    }
+
+    private void fillCityFrom() {
+        WebDriverWait wait = new WebDriverWait(driver, 5);
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(DEPARTURE_CITY_BLOCK_XPATH + "/div[@class = 'autocomplete__close']")));
+        WebElement inputFrom = driver.findElement(By.xpath(DEPARTURE_CITY_BLOCK_XPATH + "/input"));
         inputFrom.clear();
         inputFrom.sendKeys("Москва");
-        Thread.sleep(2000);
-        WebElement searchResult = driver.findElement(By.xpath("//div[@class = 'group-fields__from-block']/location-autocomplete/div/ul/li"));
-        searchResult.click();
+        By firstAutocompleteItem = By.xpath(DEPARTURE_CITY_BLOCK_XPATH + "/ul/li");
+        wait.until(ExpectedConditions.visibilityOfElementLocated(firstAutocompleteItem));
+        WebElement autocompleteResult = driver.findElement(firstAutocompleteItem);
+        autocompleteResult.click();
+    }
 
-        // autocomplete__close
-
-        WebElement inputTo = driver.findElement(By.xpath("//div[@class = 'search-form__group-fields']/location-autocomplete/div/input"));
-        inputTo.clear();
+    private void fillCityTo() {
+        WebDriverWait wait = new WebDriverWait(driver, 5);
+        WebElement inputTo = driver.findElement(By.xpath(DESTINATION_CITY_BLOCK_XPATH + "/input"));
         inputTo.sendKeys("Новосибирск");
-        Thread.sleep(2000);
-        WebElement searchResultTo = driver.findElement(By.xpath("//div[@class = 'search-form__group-fields']/location-autocomplete/div/ul/li"));
+        By firstAutocompleteItem = By.xpath(DESTINATION_CITY_BLOCK_XPATH + "/ul/li");
+        wait.until(ExpectedConditions.visibilityOfElementLocated(firstAutocompleteItem));
+        WebElement searchResultTo = driver.findElement(firstAutocompleteItem);
         searchResultTo.click();
+    }
 
+    private TicketInfo parseCheapestTicketInfo() {
+        TicketInfo result = new TicketInfo();
+        WebDriverWait wait = new WebDriverWait(driver, 7);
+
+        By buyButtonXpath = By.xpath(CHEAPEST_TICKET_INFO_PATH + "//button[@class = 'btn btn__blue ticket-group__buy-btn']");
+        wait.until(ExpectedConditions.visibilityOfElementLocated(buyButtonXpath));
+        WebElement buyButton = driver.findElement(buyButtonXpath);
+        String cost = buyButton.getText().replace("Купить за ", "");
+        result.setCost(cost);
+
+        WebElement departureTimeElem = driver.findElements(By.xpath(CHEAPEST_TICKET_INFO_PATH + "//div[@class = 'flight-description__to-from']//div[@class = 'flight-description__to-from-time']"))
+                .get(0);
+        WebElement departureDateElem = driver.findElements(By.xpath(CHEAPEST_TICKET_INFO_PATH + "//div[@class = 'flight-description__to-from']//div[@class = 'flight-description__to-from-date']"))
+                .get(0);
+        result.setDepartureDateTime(departureTimeElem.getText() + " " + departureDateElem.getText());
+
+        WebElement arrivalTimeElem = driver.findElements(By.xpath(CHEAPEST_TICKET_INFO_PATH + "//div[@class = 'flight-description__to-from']//div[@class = 'flight-description__to-from-time']"))
+                .get(1);
+        WebElement arrivalDateElem = driver.findElements(By.xpath(CHEAPEST_TICKET_INFO_PATH + "//div[@class = 'flight-description__to-from']//div[@class = 'flight-description__to-from-date']"))
+                .get(1);
+        result.setArrivalDateTime(arrivalTimeElem.getText() + " " + arrivalDateElem.getText());
+
+        WebElement flightLengthElem = driver.findElement(By.xpath(CHEAPEST_TICKET_INFO_PATH + "//div[@class = 'flight-description__transfer-stops-about hide-in-mobile']"));
+        result.setFlightLength(flightLengthElem.getAttribute("textContent"));
+
+        WebElement airlineElem = driver.findElement(By.xpath(CHEAPEST_TICKET_INFO_PATH + "//div[@class = 'flight-description__company-icon show-only-mobile']"));
+        result.setAirline(airlineElem.getAttribute("textContent"));
+
+        return result;
+    }
+
+    private void clickSubmitButton() {
         WebElement submitButton = driver.findElement(By.className("search-form__submit"));
         submitButton.click();
+    }
 
-        //search-form__submit
-        return inputFrom.toString();
+    private void increasePassengersCount() throws  Exception {
+        driver.findElement(By.xpath("//div[@class = 'select-passengers-count__label']")).click();
+        driver.findElement(By.xpath("//div[@class = 'select-passengers-count__popup']/div/div//button[@class = 'counter__btn btn-plus']")).click();
+        Thread.sleep(3000);
     }
 
     @PostConstruct
